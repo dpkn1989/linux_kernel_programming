@@ -1,0 +1,105 @@
+This document explains all the aspects I learnt through this course.
+
+***************************************************************************************************
+************************** Creating, building & loading a kernel module ***************************
+***************************************************************************************************
+To create a Hello World kernel module
+    -> Create hello_world.c
+    -> Include linux/kernel.h & linux/module.h
+    -> Include MODULE_LICENSE
+    -> Define functions for Init and Exit
+    -> Init shall return 'int' and Exit shall return 'void'
+    -> Map Init and Exit functions to module_init() and module_exit() macros respectively
+
+To build Hello World kernel module
+    -> Since it is a kernel module that shall be a .ko file, general gcc build command doesn't work as it generates .o file
+    -> Create a Makefile in the location of Hello World source file and add this content
+       obj-m := hello_world.o
+    -> Then run make command as shown below
+        make -C /lib/modules/`uname -r`/build/ M=${PWD} modules
+            where, -C looks for kernel module Makefile in /lib/modules/`uname -r`/build/ and
+                    and that Makefile looks for the Makefile of the new kernel module to build via M=${PWD}
+                    and finally build this as a module using "modules" at the end of the command
+    -> To clean-up everything built via above make command use "clean" instead of "modules"
+        make -C /lib/modules/`uname -r`/build/ M=${PWD} clean 
+
+To load a kernel module into the kernel
+    -> The command to use for this purpose is "insmod"
+        sudo insmod ./hello_world.ko
+    -> Similarly, "rmmod" to remove kernel module
+        sudo rmmod ./hello_world.ko
+    
+    The printk messages from hello_world can be seen using "dmesg" command
+        -> After insmod, init function display message can be seen
+        -> After rmmod, exit function display message can be seen using dmesg
+
+modinfo - The command to display info regarding a module
+    Example, modinfo ./hello_world.ko
+
+***************************************************************************************************
+************************** Simplifying make and changing the name of a kernel module **************
+***************************************************************************************************
+To simplify make commands, add those commands to Makefile -> Refer to the Makefile of hello_world.c kernel module
+
+To change the name of a kernel module, perform following changes to the Makefile
+    -> obj-m := <new_name>.o
+       <new_name>-objs := hello_world.o
+
+       Example, obj-m := my_kernel_module.o
+                my_kernel_module-objs := hello_world.o display.o    // You can add multiplt files here
+
+To instruct Makefile to create/generate multiple kernel modules, you can do that like shown below
+    -> obj-m := <module_01>.o
+       obj-m += <module_02>.o 
+
+***************************************************************************************************
+************************************* Important dmesg commands ************************************
+***************************************************************************************************
+dmesg -c - Prints data to console and clears the ring buffer
+dmesg -C - Clears the ring buffer without printing data to the console
+dmesg -t - Doesn't print timestamps
+dmesg -l err,warn - Prints messages with error and warning log levels
+dmesg -T - Converts timestamp to human readable
+dmesg -x - To add log level to the printed message
+dmesg -w - To run dmesg in "follow" mode, meaning dmesg runs continuously and displays new messages on the spot
+            Example, dmesg -w & // Runs dmesg follow-up in the background
+
+***************************************************************************************************
+***************************** Providing arguments/parameters to ko ********************************
+***************************************************************************************************
+We need to use module_param(name,type,permission) to send arguments to a kernel module
+    Example, module_param(value,int,S_IRUGO);   //In source code
+             sudo insmod ./<module_name>.ko <parameter_name>=<parameter_value>
+
+If we want to pass arguments to builtin ko then we need to do it as shown below
+    <module_name>.<parameter_name>=<value>
+
+If we have to pass more than one word in a string(multiple words) then we need to do it as shown below
+    sudo insmod ./<module_name>.ko <parameter_name>='"Hi, this is Ramachandra"'   //Put the string in double quotes covered by single quotes
+    
+***************************************************************************************************
+************************************ Symbol Tables or Symbols *************************************
+***************************************************************************************************
+All the symbols of a kernel can be viewed in /boot/System.map-<kernel>
+    However, these are the symbols generated during build of kernel hence this table is static
+
+/proc/kallsyms contains all the symbols, even the ones from newly running modules that means it is dynamic
+
+If we want a module to export a symbol and let another module to use that symbol then refer to share_symbol_add() related
+    data in hello_world.c and sita_ram.c
+
+If we want to use modprobe to establish dependency of my_sitaram_module on my_kernel_module, then
+    Create soft symbolic links for both modules to /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+        sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+        sudo ln -s ./my_sitaram_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+
+    Now update /lib/modules/6.8.0-57-generic/modules.dep file using the command below. This regenerates module dependency information so the 
+        kernel knows about the new module.
+        sudo depmod -a
+
+    Now that the modules are added to modules.dep we can now run run the module using modprobe. 
+    Instead of inserting both modules using insmod, we can just run second module which actually uses first module as the former is a dependent on the later.
+        sudo modprobe my_sitaram_module
+
+    A variable has been exported similar to share_symbol_add() function
+    
