@@ -69,13 +69,13 @@ dmesg -w - To run dmesg in "follow" mode, meaning dmesg runs continuously and di
 ***************************************************************************************************
 We need to use module_param(name,type,permission) to send arguments to a kernel module
     Example, module_param(value,int,S_IRUGO);   //In source code
-             sudo insmod ./<module_name>.ko <parameter_name>=<parameter_value>
+             -> sudo insmod ./<module_name>.ko <parameter_name>=<parameter_value>
 
 If we want to pass arguments to builtin ko then we need to do it as shown below
     <module_name>.<parameter_name>=<value>
 
 If we have to pass more than one word in a string(multiple words) then we need to do it as shown below
-    sudo insmod ./<module_name>.ko <parameter_name>='"Hi, this is Ramachandra"'   //Put the string in double quotes covered by single quotes
+    -> sudo insmod ./<module_name>.ko <parameter_name>='"Hi, this is Ramachandra"'   //Put the string in double quotes covered by single quotes
     
 ***************************************************************************************************
 ************************************ Symbol Tables or Symbols *************************************
@@ -90,16 +90,80 @@ If we want a module to export a symbol and let another module to use that symbol
 
 If we want to use modprobe to establish dependency of my_sitaram_module on my_kernel_module, then
     Create soft symbolic links for both modules to /lib/modules/6.8.0-57-generic/kernel/drivers/misc
-        sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
-        sudo ln -s ./my_sitaram_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+        -> sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+        -> sudo ln -s ./my_sitaram_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
 
     Now update /lib/modules/6.8.0-57-generic/modules.dep file using the command below. This regenerates module dependency information so the 
         kernel knows about the new module.
-        sudo depmod -a
+        -> sudo depmod -a
 
     Now that the modules are added to modules.dep we can now run run the module using modprobe. 
     Instead of inserting both modules using insmod, we can just run second module which actually uses first module as the former is a dependent on the later.
-        sudo modprobe my_sitaram_module
+        -> sudo modprobe my_sitaram_module
 
     A variable has been exported similar to share_symbol_add() function
+
+***************************************************************************************************
+****************************************** Kernel Taint *******************************************
+***************************************************************************************************
+Kernel taint means it is in a state that is not supported by the community
+    Certain debugging functionalities and API calls may also be disabled if kernel is tainted
+
+We can check if kernel is tainted by looking into /proc/sys/kernel/tainted
+    -> cat /proc/sys/kernel/tainted
+    Displays 0 if not tainted and greater than zero otherwise
     
+We can decode the value of taint using the script fetched from https://github.com/torvalds/linux/blob/master/tools/debugging/kernel-chktaint
+    Run this script and it shows the reason and a value, which can be decoded from the table in https://kernel.org/doc/html/latest/admin-guide/tainted-kernels.html
+
+***************************************************************************************************
+****************************** Sections of a Kernel Module ****************************************
+***************************************************************************************************
+To view all sections of a kernel module we need to use objdump
+    -> objdump --section-headers ./my_kernel_module.ko
+
+To view a specific section 
+    -> objdump --section-headers --section=.data ./my_kernel_module.ko
+    To view full content of that section 
+        -> objdump --section-headers --section=.data --full-contents ./my_kernel_module.ko
+        or -> objdump --section-headers --section=.modinfo --full-contents ./my_kernel_module.ko
+
+***************************************************************************************************
+****************************** printk / ring buffer / dmesg ***************************************
+***************************************************************************************************
+As we know kernel logs are captured in a ring buffer, the size of that ring buffer can be obtained from
+    -> cat /boot/config-6.8.0-57-generic | grep CONFIG_LOG_BUF_SHIFT
+
+The default log level, if not mentioned in printk() function, will be warn.
+    This can be checked from -> cat /proc/sys/kernel/printk
+    It displays 4 digits and the meaning of each digit is explained below
+        Digit 1: Console Log level - The level at which messages are logged in console device
+        Digit 2: Default log level - The level at which messages are logged when log level is not specified in printk function
+        Digit 3: Minimum console log level
+        Digit 4: Maximum console log level
+
+In linux kernel messages are not printed on GUI/graphical applications like xterm, gnome, konsole etc since graphics mode is implemented in User space but 
+    kernel messages come from kernel space. 
+    The GUI we generally use is gnome
+    To enter into kernel space console we need to use Ctrl+Alt+F4 and to return to GUI Ctrl+Alt+F2
+    If you want to view INFO log level message in kernel space console, perform <sudo dmesg -n <IntendedLogLevel + 1>>
+        Example, sudo dmesg -n 8   // To display logs till Debug level as Debug level is 7 
+
+Kernel source provides macros for printk with every log level
+    For example, for INFO level it is pr_info("messgae") instead of printk(KERN_INFO"message")
+    For DEBUG, it doesn't display messages without enabling DEBUG flag or CONFIG_DYNAMIC_DEBUG
+
+We can't print floating point value using printk in Kernel space, because not all architectures have Float related registers or related HW capables.
+    Please refer to the course resources for further details.
+
+There is a macro printk_once() that can be used to print that statement only once even it is written inside a loop.
+    However, there are limitations like printk_once cannot be used on KERN_WARN messages.
+    There are other macros like printk_ratelimit, that returns 0 if the limit of log messages is reached. And will return 1 until the time limit is elapsed.
+    -> cat /proc/sys/kernel/printk_ratelimit_burst
+    -> cat /proc/sys/kernel/printk_ratelimit
+
+***************************************************************************************************
+******************************************* STRACE ************************************************
+***************************************************************************************************
+To check the System calls made by a kernel module we need to use starce like shown below
+    -> sudo strace -o /home/sitaram/<name of file you want to get the data>.txt insmod <kernel_module_name>

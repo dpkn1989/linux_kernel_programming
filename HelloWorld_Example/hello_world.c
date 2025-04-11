@@ -3,6 +3,10 @@
 #include "hello_world.h"
 
 MODULE_LICENSE("GPL");
+MODULE_VERSION("1.0.0");
+MODULE_AUTHOR("Praveen");
+MODULE_DESCRIPTION("This module is used for learning Linux Kernel Programming");
+MODULE_INFO(Date,"09 April 2025");    // To add my own info to the Module information list
 
 /*int value = 0;
 char* name = "SitaRam";
