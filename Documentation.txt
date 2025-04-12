@@ -167,3 +167,51 @@ There is a macro printk_once() that can be used to print that statement only onc
 ***************************************************************************************************
 To check the System calls made by a kernel module we need to use starce like shown below
     -> sudo strace -o /home/sitaram/<name of file you want to get the data>.txt insmod <kernel_module_name>
+
+***************************************************************************************************
+************************************ Kernel Panic, Oops, Bug **************************************
+***************************************************************************************************
+To view stack trace we can use dump_stack() function in kernel module code. Refer my_sitaram_module for reference
+
+Kernel PANIC means an error in Kernel code. On kernel panic, kernel stops immediately to avoid data loss or some other damage.
+    To create a panic from a user created kernel module, we can add panic() function. This function dumps some debug info as well.
+        -> panic("I'm triggering kernel panic now\n");
+    By default kernel doesn't reboot on panic but we can configure to do so.
+    Example, -> echo '5' > /proc/sys/Kernel/panic    //Makes kernel to reboot in 5 seconds after panic
+    Now if the module that contains panic() function is run then kernel reboots after 5 seconds.
+
+Oops is similar to SEGFAULT in User space. Oops happens when a situation like invalid memory access happens from kernel module.
+    Upon Oops, the corresponding process is killed.
+    Prints some useful info for debugging.
+    Kernel continues to execute but cannot be trusted. 
+
+We can trigger BUG macro in the module upon the user condition
+    BUG macro prints content of registers, stack trace, and kills process
+    WARN macro does the same like BUG but doesn't kill the process
+    Unfortunately, we cannot remove the modules after BUG or Oops
+
+***************************************************************************************************
+********************************** Kernel - Process Management ************************************
+***************************************************************************************************
+We can view the number of available Processors using -> cat /proc/cpuinfo
+
+To check the number of Processors from Kernel space we can use the macro num_online_cpus()
+
+In Linux, kernel considers each Process as a Task and it stores the processes in a doubly linked list.
+    That list is of type struct task_struct defined in /linux-6.8/include/linux/sched.h
+
+In a module, if we want to know about the current process running it in the kernel then we can use a macro called 'current' provided by the kernel.
+    Example, current->pid; or current->comm; etc
+        While initializing the module the above values will show pid and name of insmod
+        While exiting the module the above values will show pid and name of rmmod
+    This macro has to be implemented by every architecture, which means it is not generic but architecture specific. Defined in asm/current.h
+
+The address space of a Process can be seen using below command
+    First get the PID of Process from -> ps -ef
+        Then -> cat /proc/<PID>/maps
+    From a module this can be accessed using current->mm where mm is a struct mm_struct type. This struct contains Process VMAs, Page tables etc.
+    Look into the Course material for further reference
+
+***************************************************************************************************
+********************************** Kernel - Thread Management *************************************
+***************************************************************************************************
