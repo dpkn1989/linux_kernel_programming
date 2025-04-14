@@ -28,6 +28,9 @@ To load a kernel module into the kernel
         sudo insmod ./hello_world.ko
     -> Similarly, "rmmod" to remove kernel module
         sudo rmmod ./hello_world.ko
+
+    Similarly, -> sudo modprobe hello_world.ko
+                  sudo modprobe -r hello_world.ko
     
     The printk messages from hello_world can be seen using "dmesg" command
         -> After insmod, init function display message can be seen
@@ -215,3 +218,94 @@ The address space of a Process can be seen using below command
 ***************************************************************************************************
 ********************************** Kernel - Thread Management *************************************
 ***************************************************************************************************
+Kernel thread is a Linux task runningonly in kernel mode. Both kernel & User threads are represented by task_struct but the only difference is that
+    there is no address space for kernel thread, hence mm i task_struct is NULL set to NULL.
+
+To create a kernel thread we use kthread_create() function, however this is just to create a thread but doesn't run it.
+    To run the thread we use wake_up_process() function.    
+    To stop the thread we need to poll kthread_should_stop() in the thread, which is generally set in exit function using kthread_stop().
+    Refer to thread_example.c for understanding.
+
+We can use kthread_run() instead of suing two functions kthread_create & wake_up_process
+
+We can get the processor number where the thread is running via smp_processor_id()
+
+***************************************************************************************************
+************************* Module support for diff Kernel versions *********************************
+***************************************************************************************************
+We can check the Linux kernel version using LINUX_VERSION_CODE defined in linux/version.h.
+    In vershion.h it is represented in decimal form
+        Calculation -> Version * 65536 + Patch number * 256 + Patch level      // Kernel Version can be acquired from <uname -r> command 
+        Example, 6*65536 + 8*256 + 0 = 393216 + 2048 = 395264                  // This is visible in version.h
+    
+    If we want to know the decimal value from code instead of manual calculation, we can use KERNEL_VERSION
+        Example, pr_info("The decimal of kernel version 6.8.0 is: %u\n", KERNEL_VERSION(6,8,0));
+        We can have comparisions like <if(LINUX_VERSION_CODE > KERNEL_VERSION(6,8,0)){ ... }>
+
+    If we want the string form of version then we can use UTS_RELEASE which is in /generated/utsrelease.h
+        Example, pr_info("The UTS Release is: %s\n", UTS_RELEASE);
+
+
+***************************************************************************************************
+************************* Init & Exit macros and other imp stuff **********************************
+***************************************************************************************************
+Functions specified by module_init() are used during initialization and are run only once. 
+    __init can be used for module_init() function so that kernel can free RAM, removing that function, once the module is initialized.
+    Similarly, module_exit() has --exit macro
+        Example, static int __init module_init(void){ ... }
+    
+    For data, kernel provides __initdata & __exitdata
+        Example,    static char buff[] __initdata = {1,2,3,4,5};
+                    static int __init module_init(void){ 
+                        pr_info("The string in the buff is %s\n",buff);
+                    }
+        Remember an important point that to use __initdata defined data in module_init() function then the later shall also be defined with __init macro.
+
+We can check the list of built-in modules from the file /lib/modules/`uname -r`/modules.builtin
+
+To automatically load your module at boot time you need to perform following steps
+    First thing is to update module dependency info as done before in Symbol Table & Symbols section
+        Create soft symbolic links for the module to /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+            -> sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+
+        Now update /lib/modules/6.8.0-57-generic/modules.dep file using the command below. This regenerates module dependency information so the 
+            kernel knows about the new module.
+            -> sudo depmod -a
+
+        Now that the module is added to modules.dep we can now check if the module is running & then remove it. 
+            -> sudo modprobe my_sitaram_module
+            -> sudo modprobe -r my_sitaram_module
+
+    Then add the module name into /etc/modules file
+        -> vi /etc/modules
+        -> my_sitaram_module
+        -> Save the file and reboot the System
+    
+    After rebbot we can see my_sitaram_module in the list of running modules and messages corresponding this module in dmesg
+
+We can also prevent a kernel module from loading by blacklisting it
+    We need to create a <filename>.conf file in /etc/modprobe.d and append a line for each module to be blacklisted using the keyword 'blacklist'
+        -> Example, blacklist my_kernel_module
+
+    Then run below command to rebuild initramfs
+        -> sudo update-initramfs -uname
+
+    Then reboot the system and check if the module is disabled/not running
+
+    We can also blacklist a module from bootloader, when such module makes it impossible to boot our system
+        For this we need to modify the boot loader file /etc/default/grub
+            -> sudo vi /etc/default/grub
+            -> Add the module(s) to GRUB_CMDLINE_LINUX as 'module_blacklist=<module_name>' at the end
+                Example, GRUB_CMDLINE_LINUX="find_preseed=/preseed.cfg auto noprompt priority=critical locale=en_US module_blacklist=my_kernel_module"
+            -> Save the file and run 'sudo update-grub'
+            Then reboot the system and check if the module is disabled/not running
+
+To pass parameters to a kernel module that start automatically at boot, we can do the following
+    Create a <filename>.conf file or use an existing file
+    Add 'options <module_name> <parameter_name>=<parameter_value>'
+        Example, options snd-intel8x0m index=-2
+
+We can check the parameter values passed to a module using systool utility
+    This utility reads the data from /sys/module/<module_name>/parameters/ and displays on the terminal
+    The command is -> systool -vm <module_name>
+    However, this command shows the parameters defined with proper permission. It cannot display parameters with '0' permission
