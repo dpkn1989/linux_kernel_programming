@@ -16,33 +16,33 @@ To build Hello World kernel module
     -> Create a Makefile in the location of Hello World source file and add this content
        obj-m := hello_world.o
     -> Then run make command as shown below
-        make -C /lib/modules/`uname -r`/build/ M=${PWD} modules
+        <make -C /lib/modules/`uname -r`/build/ M=${PWD} modules>
             where, -C looks for kernel module Makefile in /lib/modules/`uname -r`/build/ and
-                    and that Makefile looks for the Makefile of the new kernel module to build via M=${PWD}
+                    and that Makefile looks for the Makefile of the new kernel module to be built via M=${PWD}
                     and finally build this as a module using "modules" at the end of the command
     -> To clean-up everything built via above make command use "clean" instead of "modules"
-        make -C /lib/modules/`uname -r`/build/ M=${PWD} clean 
+        <make -C /lib/modules/`uname -r`/build/ M=${PWD} clean>
 
 To load a kernel module into the kernel
     -> The command to use for this purpose is "insmod"
-        sudo insmod ./hello_world.ko
+        <sudo insmod ./hello_world.ko>
     -> Similarly, "rmmod" to remove kernel module
-        sudo rmmod ./hello_world.ko
+        <sudo rmmod ./hello_world.ko>
 
-    Similarly, -> sudo modprobe hello_world.ko
-                  sudo modprobe -r hello_world.ko
+    Similarly, -> <sudo modprobe hello_world.ko>
+                  <sudo modprobe -r hello_world.ko>
     
     The printk messages from hello_world can be seen using "dmesg" command
         -> After insmod, init function display message can be seen
         -> After rmmod, exit function display message can be seen using dmesg
 
 modinfo - The command to display info regarding a module
-    Example, modinfo ./hello_world.ko
+    Example, <modinfo ./hello_world.ko>
 
 ***************************************************************************************************
 ************************** Simplifying make and changing the name of a kernel module **************
 ***************************************************************************************************
-To simplify make commands, add those commands to Makefile -> Refer to the Makefile of hello_world.c kernel module
+To simplify existing make commands, add them to Makefile -> Refer to the Makefile for better understanding
 
 To change the name of a kernel module, perform following changes to the Makefile
     -> obj-m := <new_name>.o
@@ -72,37 +72,37 @@ dmesg -w - To run dmesg in "follow" mode, meaning dmesg runs continuously and di
 ***************************************************************************************************
 We need to use module_param(name,type,permission) to send arguments to a kernel module
     Example, module_param(value,int,S_IRUGO);   //In source code
-             -> sudo insmod ./<module_name>.ko <parameter_name>=<parameter_value>
+             -> <sudo insmod ./<module_name>.ko <parameter_name>=<parameter_value>>
 
 If we want to pass arguments to builtin ko then we need to do it as shown below
     <module_name>.<parameter_name>=<value>
 
 If we have to pass more than one word in a string(multiple words) then we need to do it as shown below
-    -> sudo insmod ./<module_name>.ko <parameter_name>='"Hi, this is Ramachandra"'   //Put the string in double quotes covered by single quotes
+    -> <sudo insmod ./<module_name>.ko <parameter_name>='"Hi, this is Ramachandra"'>   //Put the string in double quotes covered by single quotes
     
 ***************************************************************************************************
 ************************************ Symbol Tables or Symbols *************************************
 ***************************************************************************************************
-All the symbols of a kernel can be viewed in /boot/System.map-<kernel>
+All the symbols of a kernel can be viewed in /boot/System.map-<kernel_version> file
     However, these are the symbols generated during build of kernel hence this table is static
 
-/proc/kallsyms contains all the symbols, even the ones from newly running modules that means it is dynamic
+/proc/kallsyms file contains all the symbols, even the ones from newly running modules, that means it is dynamic
 
 If we want a module to export a symbol and let another module to use that symbol then refer to share_symbol_add() related
     data in hello_world.c and sita_ram.c
 
 If we want to use modprobe to establish dependency of my_sitaram_module on my_kernel_module, then
     Create soft symbolic links for both modules to /lib/modules/6.8.0-57-generic/kernel/drivers/misc
-        -> sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
-        -> sudo ln -s ./my_sitaram_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+        -> <sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc>
+        -> <sudo ln -s ./my_sitaram_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc>
 
     Now update /lib/modules/6.8.0-57-generic/modules.dep file using the command below. This regenerates module dependency information so the 
         kernel knows about the new module.
-        -> sudo depmod -a
+        -> <sudo depmod -a>
 
     Now that the modules are added to modules.dep we can now run run the module using modprobe. 
     Instead of inserting both modules using insmod, we can just run second module which actually uses first module as the former is a dependent on the later.
-        -> sudo modprobe my_sitaram_module
+        -> <sudo modprobe my_sitaram_module>
 
     A variable has been exported similar to share_symbol_add() function
 
@@ -113,7 +113,7 @@ Kernel taint means it is in a state that is not supported by the community
     Certain debugging functionalities and API calls may also be disabled if kernel is tainted
 
 We can check if kernel is tainted by looking into /proc/sys/kernel/tainted
-    -> cat /proc/sys/kernel/tainted
+    -> <cat /proc/sys/kernel/tainted>
     Displays 0 if not tainted and greater than zero otherwise
     
 We can decode the value of taint using the script fetched from https://github.com/torvalds/linux/blob/master/tools/debugging/kernel-chktaint
@@ -123,37 +123,38 @@ We can decode the value of taint using the script fetched from https://github.co
 ****************************** Sections of a Kernel Module ****************************************
 ***************************************************************************************************
 To view all sections of a kernel module we need to use objdump
-    -> objdump --section-headers ./my_kernel_module.ko
+    -> <objdump --section-headers ./my_kernel_module.ko>
 
-To view a specific section 
-    -> objdump --section-headers --section=.data ./my_kernel_module.ko
+To view a specific section, say .data then
+    -> <objdump --section-headers --section=.data ./my_kernel_module.ko>
     To view full content of that section 
-        -> objdump --section-headers --section=.data --full-contents ./my_kernel_module.ko
-        or -> objdump --section-headers --section=.modinfo --full-contents ./my_kernel_module.ko
+        -> <objdump --section-headers --section=.data --full-contents ./my_kernel_module.ko>
+        or -> <objdump --section-headers --section=.modinfo --full-contents ./my_kernel_module.ko>
 
 ***************************************************************************************************
 ****************************** printk / ring buffer / dmesg ***************************************
 ***************************************************************************************************
 As we know kernel logs are captured in a ring buffer, the size of that ring buffer can be obtained from
-    -> cat /boot/config-6.8.0-57-generic | grep CONFIG_LOG_BUF_SHIFT
+    -> <cat /boot/config-`uname -r` | grep CONFIG_LOG_BUF_SHIFT>
+    -> <cat /boot/config-6.8.0-57-generic | grep CONFIG_LOG_BUF_SHIFT>        // In our case
 
 The default log level, if not mentioned in printk() function, will be warn.
-    This can be checked from -> cat /proc/sys/kernel/printk
+    This can be checked from -> <cat /proc/sys/kernel/printk>
     It displays 4 digits and the meaning of each digit is explained below
         Digit 1: Console Log level - The level at which messages are logged in console device
         Digit 2: Default log level - The level at which messages are logged when log level is not specified in printk function
         Digit 3: Minimum console log level
         Digit 4: Maximum console log level
 
-In linux kernel messages are not printed on GUI/graphical applications like xterm, gnome, konsole etc since graphics mode is implemented in User space but 
+In linux kernel, messages are not printed on GUI/graphical applications like xterm, gnome, konsole etc since graphics mode is implemented in User space but 
     kernel messages come from kernel space. 
     The GUI we generally use is gnome
     To enter into kernel space console we need to use Ctrl+Alt+F4 and to return to GUI Ctrl+Alt+F2
     If you want to view INFO log level message in kernel space console, perform <sudo dmesg -n <IntendedLogLevel + 1>>
-        Example, sudo dmesg -n 8   // To display logs till Debug level as Debug level is 7 
+        Example, <sudo dmesg -n 8>   // To display logs till Debug level as Debug level is 7 
 
 Kernel source provides macros for printk with every log level
-    For example, for INFO level it is pr_info("messgae") instead of printk(KERN_INFO"message")
+    For example, for INFO level it is pr_info("message") instead of printk(KERN_INFO"message")
     For DEBUG, it doesn't display messages without enabling DEBUG flag or CONFIG_DYNAMIC_DEBUG
 
 We can't print floating point value using printk in Kernel space, because not all architectures have Float related registers or related HW capables.
@@ -162,14 +163,14 @@ We can't print floating point value using printk in Kernel space, because not al
 There is a macro printk_once() that can be used to print that statement only once even it is written inside a loop.
     However, there are limitations like printk_once cannot be used on KERN_WARN messages.
     There are other macros like printk_ratelimit, that returns 0 if the limit of log messages is reached. And will return 1 until the time limit is elapsed.
-    -> cat /proc/sys/kernel/printk_ratelimit_burst
-    -> cat /proc/sys/kernel/printk_ratelimit
+    -> <cat /proc/sys/kernel/printk_ratelimit_burst>
+    -> <cat /proc/sys/kernel/printk_ratelimit>
 
 ***************************************************************************************************
 ******************************************* STRACE ************************************************
 ***************************************************************************************************
-To check the System calls made by a kernel module we need to use starce like shown below
-    -> sudo strace -o /home/sitaram/<name of file you want to get the data>.txt insmod <kernel_module_name>
+To check the System calls made by a kernel module we need to use strace like shown below
+    -> <sudo strace -o /home/sitaram/<name of file you want to get the data>.txt insmod <kernel_module_name>>
 
 ***************************************************************************************************
 ************************************ Kernel Panic, Oops, Bug **************************************
@@ -180,10 +181,10 @@ Kernel PANIC means an error in Kernel code. On kernel panic, kernel stops immedi
     To create a panic from a user created kernel module, we can add panic() function. This function dumps some debug info as well.
         -> panic("I'm triggering kernel panic now\n");
     By default kernel doesn't reboot on panic but we can configure to do so.
-    Example, -> echo '5' > /proc/sys/Kernel/panic    //Makes kernel to reboot in 5 seconds after panic
+    Example, -> <echo '5' > /proc/sys/Kernel/panic>    //Makes kernel to reboot in 5 seconds after panic
     Now if the module that contains panic() function is run then kernel reboots after 5 seconds.
 
-Oops is similar to SEGFAULT in User space. Oops happens when a situation like invalid memory access happens from kernel module.
+Oops is similar to SEGFAULT in User space. Oops occurs when a situation like invalid memory access happens from kernel module.
     Upon Oops, the corresponding process is killed.
     Prints some useful info for debugging.
     Kernel continues to execute but cannot be trusted. 
@@ -196,12 +197,12 @@ We can trigger BUG macro in the module upon the user condition
 ***************************************************************************************************
 ********************************** Kernel - Process Management ************************************
 ***************************************************************************************************
-We can view the number of available Processors using -> cat /proc/cpuinfo
+We can view the number of available Processors using -> <cat /proc/cpuinfo>
 
-To check the number of Processors from Kernel space we can use the macro num_online_cpus()
+To check the number of Processors from Kernel space we can use the macro num_online_cpus() in the source code.
 
 In Linux, kernel considers each Process as a Task and it stores the processes in a doubly linked list.
-    That list is of type struct task_struct defined in /linux-6.8/include/linux/sched.h
+    That list is of type struct task_struct defined in /linux-6.8/include/linux/sched.h. linux-6.8 is the source code I downloaded from kernel site.
 
 In a module, if we want to know about the current process running it in the kernel then we can use a macro called 'current' provided by the kernel.
     Example, current->pid; or current->comm; etc
@@ -210,23 +211,23 @@ In a module, if we want to know about the current process running it in the kern
     This macro has to be implemented by every architecture, which means it is not generic but architecture specific. Defined in asm/current.h
 
 The address space of a Process can be seen using below command
-    First get the PID of Process from -> ps -ef
-        Then -> cat /proc/<PID>/maps
+    First get the PID of Process from -> <ps -ef>
+        Then -> <cat /proc/<PID>/maps>
     From a module this can be accessed using current->mm where mm is a struct mm_struct type. This struct contains Process VMAs, Page tables etc.
     Look into the Course material for further reference
 
 ***************************************************************************************************
 ********************************** Kernel - Thread Management *************************************
 ***************************************************************************************************
-Kernel thread is a Linux task runningonly in kernel mode. Both kernel & User threads are represented by task_struct but the only difference is that
-    there is no address space for kernel thread, hence mm i task_struct is NULL set to NULL.
+Kernel thread is a Linux task running only in kernel mode. Both kernel & User threads are represented by task_struct but the only difference is that
+    there is no address space for kernel thread, hence mm in task_struct is set to NULL.
 
 To create a kernel thread we use kthread_create() function, however this is just to create a thread but doesn't run it.
     To run the thread we use wake_up_process() function.    
-    To stop the thread we need to poll kthread_should_stop() in the thread, which is generally set in exit function using kthread_stop().
+    To stop the thread we need to poll kthread_should_stop() in the thread, which is generally set in module exit function using kthread_stop().
     Refer to thread_example.c for understanding.
 
-We can use kthread_run() instead of suing two functions kthread_create & wake_up_process
+We can use kthread_run() instead of two functions kthread_create() & wake_up_process()
 
 We can get the processor number where the thread is running via smp_processor_id()
 
@@ -251,7 +252,7 @@ We can check the Linux kernel version using LINUX_VERSION_CODE defined in linux/
 ***************************************************************************************************
 Functions specified by module_init() are used during initialization and are run only once. 
     __init can be used for module_init() function so that kernel can free RAM, removing that function, once the module is initialized.
-    Similarly, module_exit() has --exit macro
+    Similarly, module_exit() has __exit macro
         Example, static int __init module_init(void){ ... }
     
     For data, kernel provides __initdata & __exitdata
@@ -266,38 +267,38 @@ We can check the list of built-in modules from the file /lib/modules/`uname -r`/
 To automatically load your module at boot time you need to perform following steps
     First thing is to update module dependency info as done before in Symbol Table & Symbols section
         Create soft symbolic links for the module to /lib/modules/6.8.0-57-generic/kernel/drivers/misc
-            -> sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc
+            -> <sudo ln -s ./my_kernel_module.ko /lib/modules/6.8.0-57-generic/kernel/drivers/misc>
 
         Now update /lib/modules/6.8.0-57-generic/modules.dep file using the command below. This regenerates module dependency information so the 
             kernel knows about the new module.
-            -> sudo depmod -a
+            -> <sudo depmod -a>
 
         Now that the module is added to modules.dep we can now check if the module is running & then remove it. 
-            -> sudo modprobe my_sitaram_module
-            -> sudo modprobe -r my_sitaram_module
+            -> <sudo modprobe my_sitaram_module>
+            -> <sudo modprobe -r my_sitaram_module>
 
     Then add the module name into /etc/modules file
-        -> vi /etc/modules
-        -> my_sitaram_module
+        -> <vi /etc/modules>
+        -> Add my_sitaram_module into the file
         -> Save the file and reboot the System
     
-    After rebbot we can see my_sitaram_module in the list of running modules and messages corresponding this module in dmesg
+    After reboot we can see my_sitaram_module in the list of running modules and messages corresponding this module in dmesg
 
 We can also prevent a kernel module from loading by blacklisting it
     We need to create a <filename>.conf file in /etc/modprobe.d and append a line for each module to be blacklisted using the keyword 'blacklist'
         -> Example, blacklist my_kernel_module
 
     Then run below command to rebuild initramfs
-        -> sudo update-initramfs -uname
+        -> <sudo update-initramfs -uname>
 
     Then reboot the system and check if the module is disabled/not running
 
     We can also blacklist a module from bootloader, when such module makes it impossible to boot our system
         For this we need to modify the boot loader file /etc/default/grub
-            -> sudo vi /etc/default/grub
+            -> <sudo vi /etc/default/grub>
             -> Add the module(s) to GRUB_CMDLINE_LINUX as 'module_blacklist=<module_name>' at the end
                 Example, GRUB_CMDLINE_LINUX="find_preseed=/preseed.cfg auto noprompt priority=critical locale=en_US module_blacklist=my_kernel_module"
-            -> Save the file and run 'sudo update-grub'
+            -> Save the file and run <sudo update-grub>
             Then reboot the system and check if the module is disabled/not running
 
 To pass parameters to a kernel module that start automatically at boot, we can do the following
@@ -307,5 +308,6 @@ To pass parameters to a kernel module that start automatically at boot, we can d
 
 We can check the parameter values passed to a module using systool utility
     This utility reads the data from /sys/module/<module_name>/parameters/ and displays on the terminal
-    The command is -> systool -vm <module_name>
+    The command is -> <systool -vm <module_name>>
     However, this command shows the parameters defined with proper permission. It cannot display parameters with '0' permission
+        For example, if a module contains a paramtere defined like this -> module_param(name,charp,0); then 'name' parameter won't be visible in systool result
