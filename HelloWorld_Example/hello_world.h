@@ -9,4 +9,8 @@ struct share_struct{
 
 extern struct share_struct share_variable;
 
+int share_symbol_add(int a, int b);
+
+void display(void);
+
 #endif
